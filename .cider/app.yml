@@ -1,0 +1,13 @@
+name: "abstract-webhook"
+version: "0.0.1"
+description: "Abstract application for handling webhooks"
+variables:
+  - name: "HTTP_ADDR"
+    usage: "HTTP address to listen on; format [HOST]:PORT"
+  - name: "HTTP_AUTH_REALM"
+    usage: "HTTP Basic auth realm"
+  - name: "HTTP_AUTH_USERNAME"
+    usage: "HTTP Basic auth username"
+  - name: "HTTP_AUTH_PASSWORD"
+    usage: "HTTP Basic auth password"
+    secret: true

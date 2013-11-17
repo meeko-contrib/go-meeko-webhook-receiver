@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	auth "github.com/abbot/go-http-auth"
@@ -45,23 +44,19 @@ var (
 func init() {
 	hasher := sha1.New()
 	hasher.Write([]byte(password))
-	password = "{SHA}" + base64.EncodeToString(hasher.Sum(nil))
+	password = "{SHA}" + base64.StdEncoding.EncodeToString(hasher.Sum(nil))
 }
 
 // Internal Cider session.
 var session cider.Session
 
-// Create the session on startup.
-func init() {
-	dialer := cider.MustNewDialer("zmq", nil)
-	session = dialer.MustDial(cider.MustSessionConfigFromEnv())
-}
-
 // Serve POST requests using the handler passed into ListenAndServe.
 // This function blocks until a signal is received. So signals are being
 // handled by this function, no need to do it manually.
 func ListenAndServe(handler http.HandlerFunc) {
-	// Close the session on exit.
+	// Initialise a Cider session.
+	dialer := cider.MustNewDialer("zmq", nil)
+	session = dialer.MustDial(cider.MustSessionConfigFromEnv())
 	defer session.Close()
 
 	// Prepare the internal HTTP request handler.
@@ -79,7 +74,7 @@ func ListenAndServe(handler http.HandlerFunc) {
 			http.Error(w, "POST Method Expected", http.StatusMethodNotAllowed)
 			return
 		}
-		handler(w, (*http.Request)(r))
+		handler(w, &r.Request)
 	})
 
 	// Listen.
@@ -105,7 +100,7 @@ func ListenAndServe(handler http.HandlerFunc) {
 			interrupted = true
 			listener.Close()
 		case <-closeCh:
-			closeAckCh <- true
+			close(closeAckCh)
 		}
 	}()
 

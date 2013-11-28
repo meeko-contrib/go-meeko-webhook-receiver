@@ -32,21 +32,6 @@ import (
 	_ "cider.go/dialers/zmq"
 )
 
-// Load all the required environment variables, panic if any of them is not set.
-var (
-	addr     = mustBeSet(os.Getenv("HTTP_ADDR"))
-	realm    = mustBeSet(os.Getenv("HTTP_AUTH_REALM"))
-	username = mustBeSet(os.Getenv("HTTP_AUTH_USERNAME"))
-	password = mustBeSet(os.Getenv("HTTP_AUTH_PASSWORD"))
-)
-
-// We need to compute SHA1 of password since that is what go-http-auth expects.
-func init() {
-	hasher := sha1.New()
-	hasher.Write([]byte(password))
-	password = "{SHA}" + base64.StdEncoding.EncodeToString(hasher.Sum(nil))
-}
-
 // Internal Cider session.
 var session cider.Session
 
@@ -54,6 +39,19 @@ var session cider.Session
 // This function blocks until a signal is received. So signals are being
 // handled by this function, no need to do it manually.
 func ListenAndServe(handler http.HandlerFunc) {
+	// Load all the required environment variables, panic if any is not set.
+	var (
+		addr     = mustBeSet(os.Getenv("HTTP_ADDR"))
+		realm    = mustBeSet(os.Getenv("HTTP_AUTH_REALM"))
+		username = mustBeSet(os.Getenv("HTTP_AUTH_USERNAME"))
+		password = mustBeSet(os.Getenv("HTTP_AUTH_PASSWORD"))
+	)
+
+	// Compute SHA1 of password since that is what go-http-auth expects.
+	hasher := sha1.New()
+	hasher.Write([]byte(password))
+	password = "{SHA}" + base64.StdEncoding.EncodeToString(hasher.Sum(nil))
+
 	// Initialise a Cider session.
 	dialer := cider.MustNewDialer("zmq", nil)
 	session = dialer.MustDial(cider.MustSessionConfigFromEnv())

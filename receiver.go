@@ -15,7 +15,7 @@
    along with this program. If not, see {http://www.gnu.org/licenses/}.
 */
 
-package collector
+package receiver
 
 import (
 	"crypto/sha1"
@@ -35,11 +35,24 @@ import (
 // Internal Cider session.
 var session cider.Session
 
+// API functions ---------------------------------------------------------------
+
+// ForwardFunc is there just for comfort.
+type ForwardFunc func(eventType string, eventBody interface{}) error
+
+// Forward function forwards events to the specified Cider instance.
+// eventBody must be marshallable by encoding/json and github.com/ugorji/go/codec packages.
+func Forward(eventType string, eventBody interface{}) error {
+	return session.Publish(eventType, eventBody)
+}
+
 // Serve POST requests using the handler passed into ListenAndServe.
 // This function blocks until a signal is received. So signals are being
 // handled by this function, no need to do it manually.
-func ListenAndServe(handler http.HandlerFunc) {
+func ListenAndServe(handler http.Handler) {
 	// Load all the required environment variables, panic if any is not set.
+	// This is placed here and not outside for to make testing easier.
+	// The applications do not have to really connect to Cider to run tests.
 	var (
 		addr     = mustBeSet(os.Getenv("HTTP_ADDR"))
 		realm    = mustBeSet(os.Getenv("HTTP_AUTH_REALM"))
@@ -72,7 +85,7 @@ func ListenAndServe(handler http.HandlerFunc) {
 			http.Error(w, "POST Method Expected", http.StatusMethodNotAllowed)
 			return
 		}
-		handler(w, &r.Request)
+		handler.ServeHTTP(w, &r.Request)
 	})
 
 	// Listen.
@@ -112,11 +125,6 @@ func ListenAndServe(handler http.HandlerFunc) {
 	if err != nil && !interrupted {
 		panic(err)
 	}
-}
-
-// eventBody must be marshallable by encoding/json and the codec package.
-func Publish(eventType string, eventBody interface{}) error {
-	return session.Publish(eventType, eventBody)
 }
 
 // Helpers ---------------------------------------------------------------------

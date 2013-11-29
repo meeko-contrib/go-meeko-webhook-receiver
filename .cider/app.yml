@@ -1,6 +1,6 @@
-name: "abstract-webhook"
+name: "webhook-receiver"
 version: "0.0.1"
-description: "Abstract application for handling webhooks"
+description: "Cider library for handling webhooks more easily"
 variables:
   - name: "HTTP_ADDR"
     usage: "HTTP address to listen on; format [HOST]:PORT"
@@ -11,6 +11,3 @@ variables:
   - name: "HTTP_AUTH_PASSWORD"
     usage: "HTTP Basic auth password"
     secret: true
-dependencies:
-  - name: "cider.go"
-    url: "git+ssh://git@bitbucket.org/tchap/cider.go"

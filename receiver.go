@@ -28,8 +28,8 @@ import (
 
 	auth "github.com/abbot/go-http-auth"
 
-	"cider.go"
-	_ "cider.go/dialers/zmq"
+	"github.com/tchap/go-cider/cider"
+	_ "github.com/tchap/go-cider/cider/dialers/zmq"
 )
 
 // Internal Cider session.

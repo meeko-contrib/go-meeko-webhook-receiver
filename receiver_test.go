@@ -29,9 +29,7 @@ import (
 // the user-defined request handler.
 func TestAuthenticatedServer(t *testing.T) {
 	const (
-		realm    = "cider-pivotal-tracker"
-		username = "pepa"
-		password = "yrqvoErxKn"
+		token = "yrqvoErxKn"
 	)
 
 	var handlerInvoked bool
@@ -41,16 +39,15 @@ func TestAuthenticatedServer(t *testing.T) {
 		w.WriteHeader(http.StatusAccepted)
 	})
 
-	handler := authenticatedServer(realm, username, password, userHandler)
+	handler := authenticatedServer(token, userHandler)
 
 	rw := httptest.NewRecorder()
 
 	Convey("Receiving a valid HTTP POST request", t, func() {
-		req, err := http.NewRequest("POST", "http://example.com", nil)
+		req, err := http.NewRequest("POST", "http://example.com?token="+token, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		req.SetBasicAuth(username, password)
 
 		handler.ServeHTTP(rw, req)
 
@@ -65,10 +62,8 @@ func TestAuthenticatedServer(t *testing.T) {
 // request handler is never invoked.
 func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 	const (
-		realm         = "cider-pivotal-tracker"
-		username      = "pepa"
-		password      = "yrqvoErxKn"
-		incorrectPass = "f656wn6x0t"
+		token          = "yrqvoErxKn"
+		incorrectToken = "f656wn6x0t"
 	)
 
 	var handlerInvoked bool
@@ -78,16 +73,15 @@ func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 		w.WriteHeader(http.StatusAccepted)
 	})
 
-	handler := authenticatedServer(realm, username, password, userHandler)
+	handler := authenticatedServer(token, userHandler)
 
 	rw := httptest.NewRecorder()
 
 	Convey("Receiving a valid HTTP POST request", t, func() {
-		req, err := http.NewRequest("POST", "http://example.com", nil)
+		req, err := http.NewRequest("POST", "http://example.com?token="+incorrectToken, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		req.SetBasicAuth(username, incorrectPass)
 
 		handler.ServeHTTP(rw, req)
 

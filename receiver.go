@@ -18,15 +18,11 @@
 package receiver
 
 import (
-	"crypto/sha1"
-	"encoding/base64"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-
-	auth "github.com/abbot/go-http-auth"
 
 	"github.com/tchap/go-cider/cider"
 	_ "github.com/tchap/go-cider/cider/dialers/zmq"
@@ -54,10 +50,8 @@ func ListenAndServe(handler http.Handler) {
 	// This is placed here and not outside for to make testing easier.
 	// The applications do not have to really connect to Cider to run tests.
 	var (
-		addr     = mustBeSet(os.Getenv("HTTP_ADDR"))
-		realm    = mustBeSet(os.Getenv("HTTP_AUTH_REALM"))
-		username = mustBeSet(os.Getenv("HTTP_AUTH_USERNAME"))
-		password = mustBeSet(os.Getenv("HTTP_AUTH_PASSWORD"))
+		addr  = mustBeSet(os.Getenv("HTTP_ADDR"))
+		token = mustBeSet(os.Getenv("TOKEN"))
 	)
 
 	// Initialise a Cider session.
@@ -98,7 +92,7 @@ func ListenAndServe(handler http.Handler) {
 	}()
 
 	// Keep serving until interrupted.
-	err = http.Serve(listener, authenticatedServer(realm, username, password, handler))
+	err = http.Serve(listener, authenticatedServer(token, handler))
 	if err != nil && !interrupted {
 		panic(err)
 	}
@@ -113,28 +107,21 @@ func mustBeSet(v string) string {
 	return v
 }
 
-func authenticatedServer(realm, username, password string, handler http.Handler) http.Handler {
-	// Compute SHA1 of password since that is what go-http-auth expects.
-	hasher := sha1.New()
-	hasher.Write([]byte(password))
-	password = "{SHA}" + base64.StdEncoding.EncodeToString(hasher.Sum(nil))
-
-	// Prepare the internal HTTP request handler.
-	secretFunc := func(usr, realm string) string {
-		if usr == username {
-			return password
+func authenticatedServer(token string, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Make sure that the token query parameter is set correctly.
+		if r.FormValue("token") != token {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
 		}
-		return ""
-	}
 
-	authenticator := auth.NewBasicAuthenticator(realm, secretFunc)
-
-	return authenticator.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 		// Allow the POST method only.
 		if r.Method != "POST" {
 			http.Error(w, "POST Method Expected", http.StatusMethodNotAllowed)
 			return
 		}
-		handler.ServeHTTP(w, &r.Request)
+
+		// If everything is ok, serve the user-defined handler.
+		handler.ServeHTTP(w, r)
 	})
 }

@@ -50,7 +50,7 @@ func ListenAndServe(handler http.Handler) {
 	// This is placed here and not outside for to make testing easier.
 	// The applications do not have to really connect to Cider to run tests.
 	var (
-		addr  = mustBeSet(os.Getenv("HTTP_ADDR"))
+		addr  = mustBeSet(os.Getenv("LISTEN_ADDRESS"))
 		token = mustBeSet(os.Getenv("TOKEN"))
 	)
 

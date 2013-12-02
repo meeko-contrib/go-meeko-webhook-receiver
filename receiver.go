@@ -60,33 +60,10 @@ func ListenAndServe(handler http.Handler) {
 		password = mustBeSet(os.Getenv("HTTP_AUTH_PASSWORD"))
 	)
 
-	// Compute SHA1 of password since that is what go-http-auth expects.
-	hasher := sha1.New()
-	hasher.Write([]byte(password))
-	password = "{SHA}" + base64.StdEncoding.EncodeToString(hasher.Sum(nil))
-
 	// Initialise a Cider session.
 	dialer := cider.MustNewDialer("zmq", nil)
 	session = dialer.MustDial(cider.MustSessionConfigFromEnv())
 	defer session.Close()
-
-	// Prepare the internal HTTP request handler.
-	secretFunc := func(user, realm string) string {
-		if user == username {
-			return password
-		}
-		return ""
-	}
-
-	authenticator := auth.NewBasicAuthenticator(realm, secretFunc)
-	authHandler := authenticator.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-		// Allow the POST method only.
-		if r.Method != "POST" {
-			http.Error(w, "POST Method Expected", http.StatusMethodNotAllowed)
-			return
-		}
-		handler.ServeHTTP(w, &r.Request)
-	})
 
 	// Listen.
 	listener, err := net.Listen("tcp", addr)
@@ -121,7 +98,7 @@ func ListenAndServe(handler http.Handler) {
 	}()
 
 	// Keep serving until interrupted.
-	err = http.Serve(listener, authHandler)
+	err = http.Serve(listener, authenticatedServer(realm, username, password, handler))
 	if err != nil && !interrupted {
 		panic(err)
 	}
@@ -134,4 +111,30 @@ func mustBeSet(v string) string {
 		panic("Required variable is not set")
 	}
 	return v
+}
+
+func authenticatedServer(realm, username, password string, handler http.Handler) http.Handler {
+	// Compute SHA1 of password since that is what go-http-auth expects.
+	hasher := sha1.New()
+	hasher.Write([]byte(password))
+	password = "{SHA}" + base64.StdEncoding.EncodeToString(hasher.Sum(nil))
+
+	// Prepare the internal HTTP request handler.
+	secretFunc := func(usr, realm string) string {
+		if usr == username {
+			return password
+		}
+		return ""
+	}
+
+	authenticator := auth.NewBasicAuthenticator(realm, secretFunc)
+
+	return authenticator.Wrap(func(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+		// Allow the POST method only.
+		if r.Method != "POST" {
+			http.Error(w, "POST Method Expected", http.StatusMethodNotAllowed)
+			return
+		}
+		handler.ServeHTTP(w, &r.Request)
+	})
 }

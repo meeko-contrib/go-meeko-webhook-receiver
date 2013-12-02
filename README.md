@@ -1,4 +1,4 @@
-cider-abstract-webhook
+cider-webhook-receiver
 ======================
 
 Cider abstract app for implementing webhook collectors

@@ -77,7 +77,7 @@ func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 
 	rw := httptest.NewRecorder()
 
-	Convey("Receiving a valid HTTP POST request", t, func() {
+	Convey("Receiving a HTTP POST request with invalid token", t, func() {
 		req, err := http.NewRequest("POST", "http://example.com?token="+incorrectToken, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -85,7 +85,7 @@ func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 
 		handler.ServeHTTP(rw, req)
 
-		Convey("The user-defined handler should be invoked", func() {
+		Convey("The request should be rejected with 401 Unauthorized", func() {
 			So(handlerInvoked, ShouldBeFalse)
 			So(rw.Code, ShouldEqual, http.StatusUnauthorized)
 		})

@@ -25,6 +25,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+// Make sure that incoming requests are authenticated before it is passed to
+// the user-defined request handler.
 func TestAuthenticatedServer(t *testing.T) {
 	const (
 		realm    = "cider-pivotal-tracker"
@@ -59,6 +61,8 @@ func TestAuthenticatedServer(t *testing.T) {
 	})
 }
 
+// Make sure that unauthenticated requests are refused and the user-defined
+// request handler is never invoked.
 func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 	const (
 		realm         = "cider-pivotal-tracker"
@@ -67,7 +71,10 @@ func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 		incorrectPass = "f656wn6x0t"
 	)
 
+	var handlerInvoked bool
+
 	userHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerInvoked = true
 		w.WriteHeader(http.StatusAccepted)
 	})
 
@@ -85,6 +92,7 @@ func TestAuthenticatedServer_Unauthorized(t *testing.T) {
 		handler.ServeHTTP(rw, req)
 
 		Convey("The user-defined handler should be invoked", func() {
+			So(handlerInvoked, ShouldBeFalse)
 			So(rw.Code, ShouldEqual, http.StatusUnauthorized)
 		})
 	})

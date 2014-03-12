@@ -118,15 +118,15 @@ func mustBeSet(v string) string {
 
 func authenticatedServer(token string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Make sure that the token query parameter is set correctly.
-		if r.FormValue("token") != token {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
 		// Allow the POST method only.
 		if r.Method != "POST" {
 			http.Error(w, "POST Method Expected", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Make sure that the token query parameter is set correctly.
+		if r.FormValue("token") != token {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 

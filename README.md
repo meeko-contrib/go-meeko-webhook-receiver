@@ -13,8 +13,8 @@ collectors for Cider. All that is necessary is to pass a `http.Handler` into
 
 There are two variables that must be defined for `ListenAndServe` to work:
 
-* `LISTEN_ADDRESS` - the network address to listen on, format HOST:[PORT]
-* `ACCESS_TOKEN` - an access token that must be present in all the POST request
+* `LISTEN_ADDRESS` - the network address to listen on, format `HOST:[PORT]`
+* `ACCESS_TOKEN` - the access token that must be present in all the POST request
                    as a parameter, otherwise the request is rejected
 
 These should be included in `.cider/app.json` as other variables.

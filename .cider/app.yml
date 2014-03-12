@@ -1,9 +1,0 @@
-name: "webhook-receiver"
-version: "0.0.1"
-description: "Cider library for handling webhooks more easily"
-variables:
-  - name: "LISTEN_ADDRESS"
-    usage: "TCP network address to listen on; format [HOST]:PORT"
-  - name: "TOKEN"
-    usage: "Token used for request authentication"
-    secret: true

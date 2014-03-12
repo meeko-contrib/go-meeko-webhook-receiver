@@ -22,79 +22,88 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"syscall"
 
-	"github.com/tchap/go-cider/cider"
-	_ "github.com/tchap/go-cider/cider/dialers/zmq"
+	"github.com/cider/go-cider/cider/services/logging"
+	"github.com/cider/go-cider/cider/services/pubsub"
+	zlogging "github.com/cider/go-cider/cider/transports/zmq3/logging"
+	zpubsub "github.com/cider/go-cider/cider/transports/zmq3/pubsub"
+
+	zmq "github.com/pebbe/zmq3"
 )
-
-// Internal Cider session.
-var session cider.Session
 
 // API functions ---------------------------------------------------------------
 
-// ForwardFunc is there just for comfort.
-type ForwardFunc func(eventType string, eventBody interface{}) error
-
-// Forward function forwards events to the specified Cider instance.
-// eventBody must be marshallable by encoding/json and github.com/ugorji/go/codec packages.
-func Forward(eventType string, eventBody interface{}) error {
-	return session.Publish(eventType, eventBody)
-}
+var (
+	Logger *logging.Service
+	PubSub *pubsub.Service
+)
 
 // Serve POST requests using the handler passed into ListenAndServe.
 // This function blocks until a signal is received. So signals are being
 // handled by this function, no need to do it manually.
 func ListenAndServe(handler http.Handler) {
 	// Load all the required environment variables, panic if any is not set.
-	// This is placed here and not outside for to make testing easier.
+	// This is placed here and not outside to make testing easier (possible).
 	// The applications do not have to really connect to Cider to run tests.
 	var (
+		alias = mustBeSet(os.Getenv("CIDER_ALIAS"))
 		addr  = mustBeSet(os.Getenv("LISTEN_ADDRESS"))
-		token = mustBeSet(os.Getenv("TOKEN"))
+		token = mustBeSet(os.Getenv("ACCESS_TOKEN"))
 	)
 
-	// Initialise a Cider session.
-	dialer := cider.MustNewDialer("zmq", nil)
-	session = dialer.MustDial(cider.MustSessionConfigFromEnv())
-	defer session.Close()
+	// Start catching interrupts.
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, os.Interrupt)
+
+	// Initialise Logging service from environmental variables.
+	var err error
+	Logger, err = logging.NewService(func() (logging.Transport, error) {
+		factory := zlogging.NewTransportFactory()
+		factory.MustReadConfigFromEnv("CIDER_ZMQ3_LOGGING_").MustBeFullyConfigured()
+		return factory.NewTransport(alias)
+	})
+	if err != nil {
+		panic(err)
+	}
+	Logger.Info("Logging service initialised\n")
+
+	// Make sure ZeroMQ is terminated properly.
+	defer func() {
+		Logger.Info("Waiting for ZeroMQ context to terminate...\n")
+		Logger.Flush()
+		zmq.Term()
+	}()
+
+	// Initialise PubSub service from environmental variables.
+	PubSub, err = pubsub.NewService(func() (pubsub.Transport, error) {
+		factory := zpubsub.NewTransportFactory()
+		factory.MustReadConfigFromEnv("CIDER_ZMQ3_PUBSUB_").MustBeFullyConfigured()
+		return factory.NewTransport(alias)
+	})
+	if err != nil {
+		panic(Logger.Critical(err))
+	}
+	defer PubSub.Close()
+	Logger.Info("PubSub service initialised\n")
 
 	// Listen.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		panic(err)
+		panic(Logger.Critical(err))
 	}
 
-	// Start catching signals.
-	var (
-		interrupted bool
-
-		closeCh    = make(chan struct{})
-		closeAckCh = make(chan struct{})
-	)
-
+	// Start processing interrupts.
+	var interrupted bool
 	go func() {
-		ch := make(chan os.Signal)
-		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-
-		select {
-		case <-ch:
-			interrupted = true
-			listener.Close()
-		case <-closeCh:
-			close(closeAckCh)
-		}
-	}()
-
-	defer func() {
-		close(closeCh)
-		<-closeAckCh
+		<-signalCh
+		interrupted = true
+		listener.Close()
 	}()
 
 	// Keep serving until interrupted.
 	err = http.Serve(listener, authenticatedServer(token, handler))
 	if err != nil && !interrupted {
-		panic(err)
+		panic(Logger.Critical(err))
 	}
 }
 

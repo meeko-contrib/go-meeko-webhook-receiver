@@ -65,11 +65,11 @@ func ListenAndServe(handler http.Handler) {
 	if err != nil {
 		panic(err)
 	}
-	Logger.Info("Logging service initialised\n")
+	Logger.Info("Logging service initialised")
 
 	// Make sure ZeroMQ is terminated properly.
 	defer func() {
-		Logger.Info("Waiting for ZeroMQ context to terminate...\n")
+		Logger.Info("Waiting for ZeroMQ context to terminate...")
 		Logger.Flush()
 		zmq.Term()
 	}()
@@ -84,7 +84,7 @@ func ListenAndServe(handler http.Handler) {
 		panic(Logger.Critical(err))
 	}
 	defer PubSub.Close()
-	Logger.Info("PubSub service initialised\n")
+	Logger.Info("PubSub service initialised")
 
 	// Listen.
 	listener, err := net.Listen("tcp", addr)

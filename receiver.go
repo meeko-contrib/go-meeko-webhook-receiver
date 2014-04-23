@@ -93,17 +93,21 @@ func ListenAndServe(handler http.Handler) {
 	}
 
 	// Start processing interrupts.
-	var interrupted bool
+	interruptedCh := make(chan bool, 1)
 	go func() {
 		<-signalCh
-		interrupted = true
+		interruptedCh <- true
 		listener.Close()
 	}()
 
 	// Keep serving until interrupted.
 	err = http.Serve(listener, authenticatedServer(token, handler))
-	if err != nil && !interrupted {
-		panic(Logger.Critical(err))
+	if err != nil {
+		select {
+		case <-interruptedCh:
+		default:
+			panic(Logger.Critical(err))
+		}
 	}
 }
 

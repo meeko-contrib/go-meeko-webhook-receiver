@@ -70,7 +70,7 @@ func ListenAndServe(handler http.Handler) {
 	// Make sure ZeroMQ is terminated properly.
 	defer func() {
 		Logger.Info("Waiting for ZeroMQ context to terminate...")
-		Logger.Flush()
+		Logger.Close()
 		zmq.Term()
 	}()
 

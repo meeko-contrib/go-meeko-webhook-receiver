@@ -6,7 +6,13 @@ This package takes care of some boilerplate code while implementing webhook
 collectors for Meeko. All that is necessary is to pass a `http.Handler` into
 `ListenAndServe` and the rest will be taken care of.
 
-## Environment ##
+## Usage ##
+
+```go
+import "github.com/meeko-contrib/go-meeko-webhook-receiver/receiver"
+```
+
+## Agent Configuration ##
 
 There are two variables that must be defined for `ListenAndServe` to work:
 

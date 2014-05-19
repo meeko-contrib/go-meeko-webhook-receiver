@@ -1,5 +1,8 @@
 # go-meeko-webhook-receiver #
 
+[![Build
+Status](https://drone.io/github.com/meeko-contrib/go-meeko-webhook-receiver/status.png)](https://drone.io/github.com/meeko-contrib/go-meeko-webhook-receiver/latest) [![Coverage Status](https://coveralls.io/repos/meeko-contrib/go-meeko-webhook-receiver/badge.png)](https://coveralls.io/r/meeko-contrib/go-meeko-webhook-receiver)
+
 go-meeko helper for implementing webhook collectors.
 
 This package takes care of some boilerplate code while implementing webhook

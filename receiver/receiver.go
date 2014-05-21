@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 
 	"github.com/meeko-contrib/go-meeko-webhook-receiver/receiver/server"
 
@@ -28,8 +27,7 @@ func ListenAndServe(handler http.Handler) {
 }
 
 func runListenAndServe(handler http.Handler) error {
-	// Make sure agent is terminated properly.
-	defer agent.Terminate()
+	log := agent.Logging()
 
 	// Load all the required environment variables, panic if any is not set.
 	// This is placed here and not outside to make testing easier (possible).
@@ -40,26 +38,22 @@ func runListenAndServe(handler http.Handler) error {
 	)
 	switch {
 	case addr == "":
-		return agent.Logging.Critical("LISTEN_ADDRESS variable is not set")
+		return log.Critical("LISTEN_ADDRESS variable is not set")
 	case token == "":
-		return agent.Logging.Critical("ACCESS_TOKEN variable is not set")
+		return log.Critical("ACCESS_TOKEN variable is not set")
 	}
-
-	// Start catching interrupts.
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt)
 
 	// Listen.
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return agent.Logging.Critical(err)
+		return log.Critical(err)
 	}
 
 	// Start processing interrupts.
-	interruptedCh := make(chan bool, 1)
+	interruptedCh := make(chan struct{})
 	go func() {
-		<-signalCh
-		interruptedCh <- true
+		<-agent.Stopped()
+		close(interruptedCh)
 		listener.Close()
 	}()
 
@@ -69,7 +63,7 @@ func runListenAndServe(handler http.Handler) error {
 		select {
 		case <-interruptedCh:
 		default:
-			return agent.Logging.Critical(err)
+			return log.Critical(err)
 		}
 	}
 	return nil

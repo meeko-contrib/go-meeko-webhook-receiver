@@ -18,7 +18,7 @@ func AuthenticatedServer(token string, handler http.Handler) http.Handler {
 		}
 
 		// Make sure that the token query parameter is set correctly.
-		if r.FormValue("token") != token {
+		if r.FormValue("token") != token && r.FormValue("access_token") != token {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
